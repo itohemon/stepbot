@@ -47,8 +47,8 @@ uint sliceNumR;   /* Right */
 uint sliceNumL;   /* Left  */
 
 /* PicoのPWMチャンネル番号 */
-uint chanR;   /* Right */
-uint chanL;   /* Left  */
+uint chanR;       /* Right */
+uint chanL;       /* Left  */
 
 double target_wR;  /* モータの目標回転角速度[rad/s] */
 double target_wL;  /* モータの目標回転角速度[rad/s] */
@@ -268,7 +268,7 @@ void cmd_vel_Cb(const void * msgin)
   const geometry_msgs__msg__Twist * cmdVelMsg 
     = (const geometry_msgs__msg__Twist *) msgin;
 
-  double cmdV = cmdVelMsg->linear.x;  /* 車体の目標速度[m/s] */
+  double cmdV = cmdVelMsg->linear.x;  /* 車体の目標速度[m/s]     */
   double cmdW = cmdVelMsg->angular.z; /* 車体の目標角速度[rad/s] */
 
   /* 速度・角速度司令から左右車輪の速度司令に変換する */
@@ -278,8 +278,8 @@ void cmd_vel_Cb(const void * msgin)
 
 void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
-  int target_valR;            /* 目標の1秒あたりのパルス数 */
-  int target_valL;            /* 目標の1秒あたりのパルス数 */
+  float target_valR;            /* 目標の1秒あたりのパルス数 */
+  float target_valL;            /* 目標の1秒あたりのパルス数 */
 
   int64_t cur_ms = rmw_uros_epoch_millis();
   rcl_ret_t ret = rcl_publish(&publisher, &msg, NULL);
@@ -293,38 +293,36 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
   int64_t diff_ms = cur_ms - timer_last_ms;
 
   target_valR = target_wR * PPR / M_PI / 2.0;    /* Right */
-  target_valL = target_wL * PPR / M_PI / 2.0;    /* Left */
+  target_valL = target_wL * PPR / M_PI / 2.0;    /* Left  */
 
-  float target_pulseR = target_valR * 1000.0 / diff_ms;
-  float target_pulseL = target_valL * 1000.0 / diff_ms;
-
-  if (target_pulseR >= 0) {
+  if (target_valR >= 0) {
     gpio_put(R_NUM_DIR, 0);
   } else {
     gpio_put(R_NUM_DIR, 1);
   }
-  if (target_pulseR != 0) {
-    float clkdivR = fabs(10000.0 / target_pulseR);
+  if (target_valR != 0) {
+    float clkdivR = fabs(10000.0 / target_valR);
     pwm_set_clkdiv(sliceNumR, clkdivR);
     pwm_set_enabled(sliceNumR, true);
   } else {
     pwm_set_enabled(sliceNumR, false);
   }
 
-  if (target_pulseL >= 0) {
+  /* L側はCW/CCWが逆 */
+  if (target_valL >= 0) {
     gpio_put(L_NUM_DIR, 1);
   } else {
     gpio_put(L_NUM_DIR, 0);
   }
-  if (target_pulseL != 0) {
-    float clkdivL = fabs(10000.0 / target_pulseL);
+  if (target_valL != 0) {
+    float clkdivL = fabs(10000.0 / target_valL);
     pwm_set_clkdiv(sliceNumL, clkdivL);
     pwm_set_enabled(sliceNumL, true);
   } else {
     pwm_set_enabled(sliceNumL, false);
   }
 
-  msg.data = target_wR;
+  msg.data = target_valR;
   timer_last_ms = cur_ms;
 }
 
