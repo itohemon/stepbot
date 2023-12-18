@@ -9,9 +9,9 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 import xacro
 
-#desc_dir_path = os.path.join(get_package_share_directory('square_description'))
-#xacro_path = os.path.join(desc_dir_path, 'urdf', 'square.xacro')
-#urdf_path  = os.path.join(desc_dir_path, 'urdf', 'square.urdf')
+#desc_dir_path = os.path.join(get_package_share_directory('stepbot_description'))
+#xacro_path = os.path.join(desc_dir_path, 'urdf', 'stepbot.xacro')
+#urdf_path  = os.path.join(desc_dir_path, 'urdf', 'stepbot.urdf')
 
 def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
@@ -37,9 +37,9 @@ def generate_launch_description():
     #)
 
     #status_node = Node(
-    #    package='square_node',
-    #    executable='square_status',
-    #    parameters=[os.path.join(get_package_share_directory("square_node"), 'config', 'square_status.yaml')],
+    #    package='stepbot_node',
+    #    executable='stepbot_status',
+    #    parameters=[os.path.join(get_package_share_directory("stepbot_node"), 'config', 'stepbot_status.yaml')],
     #    output='screen'
     #)
         
