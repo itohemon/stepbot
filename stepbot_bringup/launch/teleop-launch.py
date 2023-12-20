@@ -29,5 +29,10 @@ def generate_launch_description():
         launch_ros.actions.Node(
             package='teleop_twist_joy', executable='teleop_node',
             name='teleop_twist_joy_node', parameters=[config_filepath],
+            remappings=[('cmd_vel', '/cmd_vel_raw')],
 	),
+        launch_ros.actions.Node(
+            package='stepbot_teleop', executable='ramped_teleop',
+            name='ramped_teleop', 
+        ),
     ])
