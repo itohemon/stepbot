@@ -5,7 +5,7 @@
 #define HZ 20
 #define WHEEL_ACC_X  0.64
 #define WHEEL_ACC_Y  0.0
-#define WHEEL_ACC_TH 6.0
+#define WHEEL_ACC_TH 12.56
 #define TWIST_TIMEOUT 0.1
 
 using namespace std::placeholders;
