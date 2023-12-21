@@ -51,10 +51,10 @@ def generate_launch_description():
         output="screen"
     )
 
-    #ldlidar_pkg_dir = LaunchConfiguration(
-    #    'ldlidar_pkg_dir',
-    #    default=os.path.join(get_package_share_directory('ldlidar'), 'launch')
-    #)
+    ldlidar_pkg_dir = LaunchConfiguration(
+        'ldlidar_pkg_dir',
+        default=os.path.join(get_package_share_directory('ldlidar'), 'launch')
+    )
     
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -62,13 +62,13 @@ def generate_launch_description():
             default_value='false',
             description='Use simulation (Gazebo) clock if true'),
 
-        #IncludeLaunchDescription(
-        #    PythonLaunchDescriptionSource([ldlidar_pkg_dir, '/ldlidar.launch.py']),
-        #    launch_arguments={
-        #        'serial_port': '/dev/ttyAMA1',
-        #        'lidar_frame': 'base_scan'
-        #    }.items()
-        #),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([ldlidar_pkg_dir, '/ldlidar.launch.py']),
+            launch_arguments={
+                'serial_port': '/dev/ttyAMA1',
+                'lidar_frame': 'base_scan'
+            }.items()
+        ),
 
         #robot_state_publisher_node,
         uros_agent_node,
