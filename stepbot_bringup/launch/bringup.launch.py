@@ -9,39 +9,39 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 import xacro
 
-#desc_dir_path = os.path.join(get_package_share_directory('stepbot_description'))
-#xacro_path = os.path.join(desc_dir_path, 'urdf', 'stepbot.xacro')
-#urdf_path  = os.path.join(desc_dir_path, 'urdf', 'stepbot.urdf')
+desc_dir_path = os.path.join(get_package_share_directory('stepbot_description'))
+xacro_path = os.path.join(desc_dir_path, 'urdf', 'stepbot.xacro')
+urdf_path  = os.path.join(desc_dir_path, 'urdf', 'stepbot.urdf')
 
 def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
 
-    ## load xacro
-    #doc = xacro.process_file(xacro_path)
-    ## xacro to urdf
-    #robot_desc = doc.toprettyxml(indent='  ')
-    ## write urdf to urdf_path
-    #f = open(urdf_path, 'w')
-    #f.write(robot_desc)
-    #f.close()
+    # load xacro
+    doc = xacro.process_file(xacro_path)
+    # xacro to urdf
+    robot_desc = doc.toprettyxml(indent='  ')
+    # write urdf to urdf_path
+    f = open(urdf_path, 'w')
+    f.write(robot_desc)
+    f.close()
     
-    #print("urdf_file_name : {}".format(urdf_path))
+    print("urdf_file_name : {}".format(urdf_path))
 
-    #rsp_params = {'robot_description' : robot_desc}
+    rsp_params = {'robot_description' : robot_desc}
 
-    #robot_state_publisher_node = Node(
-    #    package='robot_state_publisher',
-    #    executable='robot_state_publisher',
-    #    output='screen',
-    #    parameters=[rsp_params, {'use_sim_time': use_sim_time}]
-    #)
+    robot_state_publisher_node = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        output='screen',
+        parameters=[rsp_params, {'use_sim_time': use_sim_time}]
+    )
 
-    #status_node = Node(
-    #    package='stepbot_node',
-    #    executable='stepbot_status',
-    #    parameters=[os.path.join(get_package_share_directory("stepbot_node"), 'config', 'stepbot_status.yaml')],
-    #    output='screen'
-    #)
+    status_node = Node(
+        package='stepbot_node',
+        executable='stepbot_status',
+        parameters=[os.path.join(get_package_share_directory("stepbot_node"), 'config', 'stepbot_status.yaml')],
+        output='screen'
+    )
         
     uros_agent_node = Node(
         package='micro_ros_agent',
@@ -70,8 +70,8 @@ def generate_launch_description():
             }.items()
         ),
 
-        #robot_state_publisher_node,
+        robot_state_publisher_node,
         uros_agent_node,
-        #status_node
+        status_node
     ])
 

@@ -16,7 +16,7 @@ def generate_launch_description():
     map_dir = LaunchConfiguration(
         'map',
         default=os.path.join(
-            "/home/itohemon/ros2_ws/src/square/"
+            "/home/itohemon/ros2_ws/src/stepbot/"
             'maps',
             NAV2_MAP,
             'map.yaml'))
@@ -24,7 +24,7 @@ def generate_launch_description():
     param_dir = LaunchConfiguration(
         'params_file',
         default=os.path.join(
-            get_package_share_directory('square_navigation2'),
+            get_package_share_directory('stepbot_navigation2'),
             'config',
             'nav2_params.yaml'))
 
@@ -67,4 +67,3 @@ def generate_launch_description():
 #            parameters=[{'use_sim_time': use_sim_time}],
 #            output='screen'),
     ])
-
