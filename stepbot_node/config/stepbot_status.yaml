@@ -1,0 +1,3 @@
+stepbot_status:
+  ros__parameters:
+    publish_tf: true
