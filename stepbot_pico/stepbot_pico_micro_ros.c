@@ -6,18 +6,18 @@
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
 #include <std_msgs/msg/float64.h>
-#include <std_msgs/msg/float32_multi_array.h>
+#include <std_msgs/msg/float64_multi_array.h>
 #include <geometry_msgs/msg/twist.h>
 #include <rmw_microros/rmw_microros.h>
 
 #include "pico/stdlib.h"
 #include "pico_uart_transports.h"
-#include "hardware/structs/watchdog.h"
+#include "hardware/watchdog.h"
 #include "hardware/pwm.h"
 
 const double WHEEL_RAD = 0.025;  /* ホイール半径[m] */
 const double WHEEL_SEP = 0.100;  /* トレッド[m] */
-const int INTR_HZ = 10;          /* タイマー割り込み周期 */
+const int INTR_HZ = 20;          /* タイマー割り込み周期 */
 const int FULLSTEP = 200;        /* フルステップでの1回転あたりのパルス数 */
 int PPR = 0;                     /* 1回転あたりのパルス数(Pulse Per Revolution) */
 
@@ -51,29 +51,28 @@ uint sliceNumL;   /* Left  */
 uint chanR;       /* Right */
 uint chanL;       /* Left  */
 
-double cmdV;       /* 車体の速度[m/s]     */
-double cmdW;       /* 車体の角速度[rad/s] */
+double cmdV;       /* 車体並進速度[m/s] */
+double cmdW;       /* 車体角速度[rad/s] */
 double target_wR;  /* モータの目標回転角速度[rad/s] */
 double target_wL;  /* モータの目標回転角速度[rad/s] */
 
 /* Micro-ROS */
 /*
  * 車体・車輪の状態をpublishするための変数
- * 0:車体X方向速度[m/s]
- * 1:車体Y方向速度[m/s]
- * 2:車体角速度[m/s]
- * 3:左車軸角速度[rad/s]
- * 4:右車軸角速度[rad/s]
+ * 0:車体並進速度[m/s]
+ * 1:車体角速度[rad/s]
+ * 2:ロボット座標系でのX座標[m]
+ * 3:ロボット座標系でのY座標[m]
+ * 4:ロボット座標系での角度theta[rad]
  * 5:左角度[rad]
  * 6:右角度[rad]
  */
-static float wheelState[7];
+static double wheelState[7];
 rcl_publisher_t pub_wheelstate;
 rcl_publisher_t pub_debug;
 
 geometry_msgs__msg__Twist cmd_vel;
-std_msgs__msg__Float64 debug_msg;
-std_msgs__msg__Float32MultiArray present_wheelState;
+std_msgs__msg__Float64MultiArray present_wheelState;
 
 int64_t cmd_vel_last_ms; /* 最後にcmd_velを受信したepoch起点の時間 */
 
@@ -284,8 +283,8 @@ void cmd_vel_Cb(const void * msgin)
   const geometry_msgs__msg__Twist * cmdVelMsg 
     = (const geometry_msgs__msg__Twist *) msgin;
 
-  cmdV = cmdVelMsg->linear.x;  /* 車体の目標速度[m/s]     */
-  cmdW = cmdVelMsg->angular.z; /* 車体の目標角速度[rad/s] */
+  cmdV = cmdVelMsg->linear.x;  /* 車体目標並進速度[m/s] */
+  cmdW = cmdVelMsg->angular.z; /* 車体目標角速度[rad/s] */
 
   /* 速度・角速度司令から左右車輪の速度司令に変換する */
   target_wR = cmdV / WHEEL_RAD + WHEEL_SEP * cmdW / 2.0 / WHEEL_RAD;
@@ -294,10 +293,18 @@ void cmd_vel_Cb(const void * msgin)
 
 void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
-  float target_valR;            /* 目標の1秒あたりのパルス数 */
-  float target_valL;            /* 目標の1秒あたりのパルス数 */
+  float target_ppsR;            /* 目標の1秒あたりのパルス数 */
+  float target_ppsL;            /* 目標の1秒あたりのパルス数 */
+  static double last_cmdV = 0;  /* 前回の目標並進速度[m/s]   */
+  static double last_cmdW = 0;  /* 前回の目標角速度[rad/s]   */
+  static int64_t last_ms = 0;   /* 前回の関数実行時刻        */
+  static double x_ = 0;
+  static double y_ = 0;
+  static double th_ = 0;
 
   int64_t cur_ms = rmw_uros_epoch_millis();
+
+  std_msgs__msg__Float64 debug_msg;
 
   /* cmd_velが500[ms]以上来なかったら左右車輪の速度指令値を0にする */
   if ((cur_ms - cmd_vel_last_ms) > 500) {
@@ -306,11 +313,14 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
   }
 
   /* 速度指令値を1秒あたりのパルス数に変換 */
-  target_valR = target_wR * PPR / M_PI / 2.0;    /* Right */
-  target_valL = target_wL * PPR / M_PI / 2.0;    /* Left  */
+  target_ppsR = target_wR * PPR / M_PI / 2.0;    /* Right */
+  target_ppsL = target_wL * PPR / M_PI / 2.0;    /* Left  */
 
+  /**************************
+   * 右側ホイールの速度変更 *
+   **************************/
   /* 速度指令値の正負で回転方向を決める */
-  if (target_valR >= 0) {
+  if (target_ppsR >= 0) {
     gpio_put(R_NUM_DIR, 0);
   } else {
     gpio_put(R_NUM_DIR, 1);
@@ -323,43 +333,60 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
    * clkdiv = sysclock / DUTY_CLK / f
    *        = 125 * 10^6 / (125 * 10^2) / target_val(R/L)
    */
-  if (target_valR != 0) {
-    float clkdivR = fabs(125e6 / DUTY_CLK / target_valR);
+  if (target_ppsR != 0) {
+    float clkdivR = fabs(125e6 / DUTY_CLK / target_ppsR);
     pwm_set_clkdiv(sliceNumR, clkdivR);
     pwm_set_enabled(sliceNumR, true);
   } else {
     pwm_set_enabled(sliceNumR, false);
   }
 
+  /**************************
+   * 左側ホイールの速度変更 *
+   **************************/
   /* 速度指令値の正負で回転方向を決める */
   /* L側はCW/CCWがR側とは逆になる */
-  if (target_valL >= 0) {
+  if (target_ppsL >= 0) {
     gpio_put(L_NUM_DIR, 1);
   } else {
     gpio_put(L_NUM_DIR, 0);
   }
-  if (target_valL != 0) {
-    float clkdivL = fabs(125e6 / DUTY_CLK / target_valL);
+  if (target_ppsL != 0) {
+    float clkdivL = fabs(125e6 / DUTY_CLK / target_ppsL);
     pwm_set_clkdiv(sliceNumL, clkdivL);
     pwm_set_enabled(sliceNumL, true);
   } else {
     pwm_set_enabled(sliceNumL, false);
   }
 
-  present_wheelState.data.data[0] = cmdV; // 車体X方向速度[m/s]
-  present_wheelState.data.data[1] = 0.0;  // 車体Y方向速度[m/s]
-  present_wheelState.data.data[2] = cmdW; // 車体角速度[rad/s]
-  present_wheelState.data.data[3] = target_wL; // 左車軸回転角速度[rad/s]
-  present_wheelState.data.data[4] = target_wR; // 右車軸回転角速度[rad/s]
-  present_wheelState.data.data[5] = 0.0; // 左車輪角度
-  present_wheelState.data.data[6] = 0.0; // 右車輪角度
+  // ロボット座標系での座標Pose算出
+  double dt = (cur_ms - last_ms) / 1000.0;
+  double delta_x = (last_cmdV * cos(th_)) * dt;
+  double delta_y = (last_cmdV * sin(th_)) * dt;
+  double delta_th = cmdW * dt;
+
+  x_ += delta_x;
+  y_ += delta_y;
+  th_ += delta_th;
+
+  present_wheelState.data.data[0] = cmdV; // 車体並進速度[m/s]
+  present_wheelState.data.data[1] = cmdW; // 車体角速度[rad/s]
+  present_wheelState.data.data[2] = x_;   // ロボット座標系X座標
+  present_wheelState.data.data[3] = y_;   // ロボット座標系Y座標
+  present_wheelState.data.data[4] = th_;  // ロボット座標系角度theta
+  present_wheelState.data.data[5] = 0;  // ホイールのジョイント角度
+  present_wheelState.data.data[6] = 0;  // ホイールのジョイント角度
   present_wheelState.data.size = 7;
 
   rcl_ret_t ret;
   ret = rcl_publish(&pub_wheelstate, &present_wheelState, NULL);
 
-  debug_msg.data = target_valR;
+  debug_msg.data = target_ppsR;
   ret = rcl_publish(&pub_debug, &debug_msg, NULL);
+
+  last_cmdV = cmdV;
+  last_cmdW = cmdW;
+  last_ms   = cur_ms;
 }
 
 int main()
@@ -431,7 +458,7 @@ int main()
     rclc_publisher_init_default(
         &pub_wheelstate,
         &node,
-        ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32MultiArray),
+        ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float64MultiArray),
         "wheel_state");
 
     rclc_timer_init_default(
