@@ -16,7 +16,7 @@
   <visual>
    <origin xyz="0 0 0.0255" rpy="0 0 0"/>
    <geometry>
-    <box size="0.120 0.120 0.10"/>
+    <box size="0.130 0.120 0.10"/>
    </geometry>
    <material name="blue">
     <color rgba="0.0 0.0 1.0 1.0"/>
@@ -24,7 +24,7 @@
   </visual>
   <collision>
    <geometry>
-    <box size="0.120 0.120 0.10"/>
+    <box size="0.130 0.120 0.10"/>
    </geometry>
   </collision>
  </link>
@@ -84,7 +84,7 @@
  <joint name="lidar_joint" type="fixed">
   <parent link="base_link"/>
   <child link="base_scan"/>
-  <origin xyz="0.03 0 0.115" rpy="0 0 0"/>
+  <origin xyz="0.03 0 0.114" rpy="0 0 0"/>
  </joint>
  <link name="base_scan">
   <inertial>
@@ -102,6 +102,22 @@
    </geometry>
   </collision>
  </link>
+
+<!-- include OAK-D S2 -->
+ <xacro:include filename="$(find depthai_descriptions)/urdf/include/depthai_macro.urdf.xacro"/>
+
+ <joint name="oak_joint" type="fixed">
+  <parent link="base_link"/>
+  <child link="oak-d-base-frame"/>
+  <origin xyz="0.08 0 0.095" rpy="0 0 0"/>
+ </joint>
+
+ <link name="oak-d-base-frame" />
+
+ <xacro:depthai_camera camera_name= "oak" camera_model = "OAK-D-S2" 
+                       base_frame = "oak-d_frame" parent="oak-d-base-frame"
+                       cam_pos_x = "0" cam_pos_y = "0" cam_pos_z = "0"
+                       cam_roll = "0" cam_pitch = "0" cam_yaw = "0"/>
 
 </robot>
 
