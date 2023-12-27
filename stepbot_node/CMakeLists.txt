@@ -28,7 +28,7 @@ find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 
-add_executable(stepbot_status
+add_library(stepbot_status SHARED
   src/stepbot_status.cpp
   )
 target_include_directories(stepbot_status PRIVATE
@@ -45,6 +45,7 @@ ament_target_dependencies(stepbot_status
   tf2
   tf2_ros
   )
+rclcpp_components_register_nodes(stepbot_status "stepbot_status::StepbotStatus")
 
 install(TARGETS
   stepbot_status

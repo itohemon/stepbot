@@ -9,7 +9,10 @@
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
-StepbotStatus::StepbotStatus() : Node("stepbot_status")
+namespace stepbot_status
+{
+
+StepbotStatus::StepbotStatus(rclcpp::NodeOptions options) : Node("stepbot_status", options)
 {
   publish_tf_ = true;
   this->get_parameter("publish_tf", publish_tf_);
@@ -102,11 +105,18 @@ void StepbotStatus::wheelStateCb(const std_msgs::msg::Float64MultiArray::SharedP
   last_time_ = current_time_;
 }
 
+}
+
+#include <rclcpp_components/register_node_macro.hpp>
+RCLCPP_COMPONENTS_REGISTER_NODE(stepbot_status::StepbotStatus)
+
+/*
 int main(int argc,  char *argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<StepbotStatus>());
+  rclcpp::spin(std::make_shared<stepbot_status::StepbotStatus>());
   rclcpp::shutdown();
 
   return 0;
 }
+*/
