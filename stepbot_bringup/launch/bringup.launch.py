@@ -1,4 +1,4 @@
-import os
+from os.path import join
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
@@ -6,12 +6,13 @@ from launch.actions import IncludeLaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
+from launch_ros.actions import Node, LoadComposableNodes
+from launch_ros.descriptions import ComposableNode
 import xacro
 
-desc_dir_path = os.path.join(get_package_share_directory('stepbot_description'))
-xacro_path = os.path.join(desc_dir_path, 'urdf', 'stepbot.xacro')
-urdf_path  = os.path.join(desc_dir_path, 'urdf', 'stepbot.urdf')
+desc_dir_path = join(get_package_share_directory('stepbot_description'))
+xacro_path = join(desc_dir_path, 'urdf', 'stepbot.xacro')
+urdf_path  = join(desc_dir_path, 'urdf', 'stepbot.urdf')
 
 def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
@@ -36,11 +37,23 @@ def generate_launch_description():
         parameters=[rsp_params, {'use_sim_time': use_sim_time}]
     )
 
-    status_node = Node(
-        package='stepbot_node',
-        executable='stepbot_status',
-        parameters=[os.path.join(get_package_share_directory("stepbot_node"), 'config', 'stepbot_status.yaml')],
-        output='screen'
+    container = Node(
+      name='stepbot_container',
+      package='rclcpp_components',
+      executable='component_container',
+      output='both',
+    )
+
+    components = LoadComposableNodes(
+      target_container='stepbot_container',
+      composable_node_descriptions=[
+        ComposableNode(
+          package='stepbot_node',
+          plugin='stepbot_status::StepbotStatus',
+          name='stepbot_status',
+          parameters=[join(get_package_share_directory("stepbot_bringup"), 'config', 'stepbot_status.yaml')],
+        )
+      ]
     )
         
     uros_agent_node = Node(
@@ -53,7 +66,7 @@ def generate_launch_description():
 
     ldlidar_pkg_dir = LaunchConfiguration(
         'ldlidar_pkg_dir',
-        default=os.path.join(get_package_share_directory('ldlidar'), 'launch')
+        default=join(get_package_share_directory('ldlidar'), 'launch')
     )
     
     return LaunchDescription([
@@ -72,6 +85,7 @@ def generate_launch_description():
 
         robot_state_publisher_node,
         uros_agent_node,
-        status_node
+        container,
+        components
     ])
 

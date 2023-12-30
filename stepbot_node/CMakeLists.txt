@@ -46,11 +46,7 @@ ament_target_dependencies(stepbot_status
   tf2_ros
   )
 rclcpp_components_register_nodes(stepbot_status "stepbot_status::StepbotStatus")
-
-install(TARGETS
-  stepbot_status
-  DESTINATION lib/${PROJECT_NAME}
-  )
+install(TARGETS stepbot_status DESTINATION lib)
 
 install(
   DIRECTORY config
