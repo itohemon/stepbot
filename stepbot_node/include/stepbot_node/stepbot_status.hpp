@@ -6,10 +6,13 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 
+namespace stepbot_status
+{
+
 class StepbotStatus : public rclcpp::Node
 {
 public:
-  StepbotStatus();
+  StepbotStatus(rclcpp::NodeOptions options);
   
 private:
   void wheelStateCb(const std_msgs::msg::Float64MultiArray::SharedPtr msg);
@@ -28,3 +31,5 @@ private:
   rclcpp::Time current_time_;
   rclcpp::Time last_time_;
 };
+
+}
