@@ -48,9 +48,4 @@ ament_target_dependencies(stepbot_status
 rclcpp_components_register_nodes(stepbot_status "stepbot_status::StepbotStatus")
 install(TARGETS stepbot_status DESTINATION lib)
 
-install(
-  DIRECTORY config
-  DESTINATION share/${PROJECT_NAME}
-)
-
 ament_package()
